@@ -1,0 +1,102 @@
+use MerchantNavyPortal;
+
+-- 1. List all jobs with their company names and ship details
+SELECT j.JobTitle, c.CompanyName, s.ShipName, s.ShipType, j.Salary, j.ClosingDate
+FROM Jobs j
+JOIN Companies c ON j.CompanyID = c.CompanyID
+JOIN Ships s ON j.ShipID = s.ShipID
+WHERE j.Status = 'Open'
+ORDER BY j.Salary DESC;
+
+-- 2. Count the number of applications for each job
+SELECT j.JobTitle, c.CompanyName, COUNT(a.ApplicationID) AS ApplicationCount
+FROM Jobs j
+LEFT JOIN Applications a ON j.JobID = a.JobID
+JOIN Companies c ON j.CompanyID = c.CompanyID
+GROUP BY j.JobID, j.JobTitle, c.CompanyName
+ORDER BY ApplicationCount DESC;
+
+-- 3. Find the most popular training courses based on enrollment
+SELECT t.CourseName, t.Instructor, COUNT(e.EnrollmentID) AS EnrollmentCount
+FROM TrainingCourses t
+LEFT JOIN CourseEnrollments e ON t.CourseID = e.CourseID
+GROUP BY t.CourseID, t.CourseName, t.Instructor
+ORDER BY EnrollmentCount DESC;
+
+-- 4. Find users who have applied for multiple jobs
+SELECT u.UserID, u.FullName, u.Email, COUNT(a.ApplicationID) AS ApplicationCount
+FROM Users u
+JOIN Applications a ON u.UserID = a.UserID
+GROUP BY u.UserID, u.FullName, u.Email
+HAVING COUNT(a.ApplicationID) > 1
+ORDER BY ApplicationCount DESC;
+
+-- 5. Calculate the average salary offered by each company
+SELECT c.CompanyName, AVG(j.Salary) AS AverageSalary, MIN(j.Salary) AS MinSalary, MAX(j.Salary) AS MaxSalary
+FROM Companies c
+JOIN Jobs j ON c.CompanyID = j.CompanyID
+GROUP BY c.CompanyID, c.CompanyName
+ORDER BY AverageSalary DESC;
+
+-- 6. List all users who have enrolled in courses but haven't paid yet
+SELECT u.UserID, u.FullName, u.Email, COUNT(e.EnrollmentID) AS UnpaidEnrollments
+FROM Users u
+JOIN CourseEnrollments e ON u.UserID = e.UserID
+WHERE e.PaymentStatus = 'Pending'
+GROUP BY u.UserID, u.FullName, u.Email
+ORDER BY UnpaidEnrollments DESC;
+
+-- 7. Find the recruiters with the most job postings
+SELECT u.UserID, u.FullName, u.Email, COUNT(j.JobID) AS JobCount
+FROM Users u
+JOIN Companies c ON u.UserID = c.RecruiterID
+JOIN Jobs j ON c.CompanyID = j.CompanyID
+WHERE u.UserType = 'Recruiter'
+GROUP BY u.UserID, u.FullName, u.Email
+ORDER BY JobCount DESC;
+
+-- 8. Find the success rate of applications for each seafarer
+SELECT u.FullName, 
+       COUNT(a.ApplicationID) AS TotalApplications,
+       SUM(CASE WHEN a.Status = 'Accepted' THEN 1 ELSE 0 END) AS AcceptedApplications,
+       (SUM(CASE WHEN a.Status = 'Accepted' THEN 1 ELSE 0 END) / COUNT(a.ApplicationID)) * 100 AS SuccessRate
+FROM Users u
+JOIN Applications a ON u.UserID = a.UserID
+WHERE u.UserType = 'Seafarer'
+GROUP BY u.UserID, u.FullName
+ORDER BY SuccessRate DESC;
+
+-- 9. Calculate the duration of each ship's journey and list them in descending order
+SELECT s.ShipName, 
+       sh.DeparturePort, 
+       sh.ArrivalPort, 
+       sh.DepartureDate, 
+       sh.ArrivalDate,
+       TIMESTAMPDIFF(HOUR, sh.DepartureDate, sh.ArrivalDate) AS JourneyHours,
+       ROUND(TIMESTAMPDIFF(HOUR, sh.DepartureDate, sh.ArrivalDate)/24, 1) AS JourneyDays
+FROM Ships s
+JOIN ShipSchedules sh ON s.ShipID = sh.ShipID
+ORDER BY JourneyHours DESC;
+
+-- 10. Analyze the relationship between ship capacity and job salary
+SELECT s.ShipType, 
+       AVG(s.Capacity) AS AvgCapacity, 
+       AVG(j.Salary) AS AvgSalary,
+       COUNT(j.JobID) AS JobCount
+FROM Ships s
+JOIN Jobs j ON s.ShipID = j.ShipID
+GROUP BY s.ShipType
+ORDER BY AvgSalary DESC;
+
+-- 11. Find the most active communication channels between user types
+SELECT 
+    u1.UserType AS SenderType,
+    u2.UserType AS ReceiverType,
+    COUNT(m.MessageID) AS MessageCount,
+    MIN(m.SentDate) AS FirstCommunication,
+    MAX(m.SentDate) AS LastCommunication
+FROM Messages m
+JOIN Users u1 ON m.SenderID = u1.UserID
+JOIN Users u2 ON m.ReceiverID = u2.UserID
+GROUP BY u1.UserType, u2.UserType
+ORDER BY MessageCount DESC;
